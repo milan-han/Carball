@@ -12,7 +12,7 @@
         canvas.style.height = canvas.height * PIXEL_SCALE + "px";
 
         // ----- Game State -----
-        let gameState = "title"; // "title", "practice", "multiplayer"
+        let gameState = "title"; // "title", "practice", "multiplayer", "waiting", "playing"
         let myPlayerIndex = -1;
         let isHost = false;
         let roomId = null;
@@ -21,14 +21,23 @@
         let singlePlayerMode = false;
         let waitingForPlayer = false;
 
+        // Ready system
+        let playersReady = { player1: false, player2: false };
+        let myReadyState = false;
+
         // Soccer game state
         let scoreP1 = 0;
         let scoreP2 = 0;
+        const WIN_SCORE = 11; // First to 11 wins
         // Celebration state
         let celebrating = false;
         let confetti = [];
         let celebrateTimer = 0;
         const CELEBRATION_MS = 1500;
+
+        // Game over state
+        let gameOver = false;
+        let winner = null;
 
         // Remote player inputs
         let remoteInputs = {};
@@ -37,7 +46,7 @@
         const keys = {};
         window.addEventListener("keydown", (e) => {
             keys[e.code] = true;
-            if (e.code === "Escape" && (gameState === "practice" || gameState === "multiplayer")) {
+            if (e.code === "Escape" && (gameState === "practice" || gameState === "playing" || gameState === "waiting")) {
                 returnToTitle();
             }
         });
@@ -95,6 +104,9 @@
                         scoreP1 = msg.gameState.scoreP1;
                         scoreP2 = msg.gameState.scoreP2;
                         celebrating = msg.gameState.celebrating;
+                        playersReady = msg.gameState.playersReady || { player1: false, player2: false };
+                        gameOver = msg.gameState.gameOver || false;
+                        winner = msg.gameState.winner || null;
                         
                         Object.assign(ball, msg.gameState.ball);
                         Object.assign(player, msg.gameState.player1);
@@ -107,10 +119,8 @@
                     if (msg.totalPlayers === 2) {
                         onPlayerJoined({ playerId: `Player ${msg.totalPlayers}`, isHost: isHost });
                         if (gameState === 'practice') {
-                            // Transition from practice to multiplayer
-                            transitionToMultiplayer();
-                        } else if (isHost) {
-                            document.getElementById('multiplayerButton').style.display = 'block';
+                            // Transition from practice to multiplayer waiting room
+                            transitionToWaiting();
                         }
                     }
                     break;
@@ -118,8 +128,7 @@
                 case 'playerLeft':
                     updatePlayerCount(msg.totalPlayers);
                     onPlayerLeft({ playerId: 'Player 2' });
-                    document.getElementById('multiplayerButton').style.display = 'none';
-                    if (gameState === 'multiplayer') {
+                    if (gameState === 'waiting' || gameState === 'playing') {
                         // Return to practice mode if other player leaves
                         transitionToPractice();
                     }
@@ -132,11 +141,14 @@
                     break;
                     
                 case 'stateUpdate':
-                    if (!isHost && gameState === 'multiplayer') {
+                    if (!isHost && (gameState === 'waiting' || gameState === 'playing')) {
                         const state = msg.state;
                         scoreP1 = state.scoreP1;
                         scoreP2 = state.scoreP2;
                         celebrating = state.celebrating;
+                        playersReady = state.playersReady || { player1: false, player2: false };
+                        gameOver = state.gameOver || false;
+                        winner = state.winner || null;
                         
                         Object.assign(ball, state.ball);
                         Object.assign(player, state.player1);
@@ -144,8 +156,13 @@
                     }
                     break;
                     
+                case 'playerReady':
+                    playersReady[`player${msg.playerIndex + 1}`] = msg.ready;
+                    updateReadyUI();
+                    break;
+                    
                 case 'gameStarted':
-                    startMultiplayer();
+                    startActualGame();
                     break;
                     
                 case 'roomFull':
@@ -243,11 +260,15 @@
             document.getElementById('gameMode').textContent = mode;
         }
 
-        function transitionToMultiplayer() {
+        function transitionToWaiting() {
             singlePlayerMode = false;
             waitingForPlayer = false;
-            gameState = 'multiplayer';
-            updateGameMode('Multiplayer Mode');
+            gameState = 'waiting';
+            gameOver = false;
+            winner = null;
+            playersReady = { player1: false, player2: false };
+            myReadyState = false;
+            updateGameMode('Waiting for Ready...');
             
             // Reset positions for multiplayer
             player.x = 100;
@@ -265,12 +286,45 @@
             resetBall();
             scoreP1 = 0;
             scoreP2 = 0;
+            
+            // Show ready UI
+            showReadyUI();
+        }
+
+        function transitionToMultiplayer() {
+            singlePlayerMode = false;
+            waitingForPlayer = false;
+            gameState = 'playing';
+            updateGameMode('Multiplayer Mode');
+            
+            // Reset positions for multiplayer
+            player.x = 100;
+            player.y = canvas.height / 2;
+            player.vx = 0;
+            player.vy = 0;
+            player.heading = 0;
+            
+            player2.x = canvas.width - 100;
+            player2.y = canvas.height / 2;
+            player2.vx = 0;
+            player2.vy = 0;
+            player2.heading = Math.PI;
+            
+            resetBall();
+            // Don't reset scores when transitioning from waiting to playing
+            
+            // Hide ready UI
+            hideReadyUI();
         }
 
         function transitionToPractice() {
             singlePlayerMode = true;
             waitingForPlayer = false;
             gameState = 'practice';
+            gameOver = false;
+            winner = null;
+            playersReady = { player1: false, player2: false };
+            myReadyState = false;
             updateGameMode('Practice Mode');
             
             // Reset to single player position
@@ -281,21 +335,117 @@
             player.heading = -Math.PI / 2;
             
             resetBall();
+            scoreP1 = 0;
+            scoreP2 = 0;
+            
+            // Hide ready UI
+            hideReadyUI();
         }
 
-        // Send input to server
-        setInterval(() => {
-            if (connected && gameState === "multiplayer") {
-                const input = {
-                    forward: keys['KeyW'] || keys['ArrowUp'],
-                    back: keys['KeyS'] || keys['ArrowDown'],
-                    left: keys['KeyA'] || keys['ArrowLeft'],
-                    right: keys['KeyD'] || keys['ArrowRight'],
-                    brake: keys['Space']
-                };
-                sendMessage({ type: 'input', input: input });
+        function toggleReady() {
+            myReadyState = !myReadyState;
+            playersReady[`player${myPlayerIndex + 1}`] = myReadyState;
+            
+            // Send ready state to server
+            sendMessage({
+                type: 'playerReady',
+                playerIndex: myPlayerIndex,
+                ready: myReadyState
+            });
+            
+            updateReadyUI();
+            
+            // Check if both players are ready
+            if (playersReady.player1 && playersReady.player2 && isHost) {
+                // Start the game
+                sendMessage({ type: 'startGame' });
             }
-        }, 50);
+        }
+
+        function updateReadyUI() {
+            const player1ReadyBtn = document.getElementById('player1ReadyBtn');
+            const player2ReadyBtn = document.getElementById('player2ReadyBtn');
+            const readyStatus = document.getElementById('readyStatus');
+            
+            if (player1ReadyBtn) {
+                player1ReadyBtn.textContent = playersReady.player1 ? 'READY!' : 'NOT READY';
+                player1ReadyBtn.className = playersReady.player1 ? 'ready-button ready' : 'ready-button';
+            }
+            
+            if (player2ReadyBtn) {
+                player2ReadyBtn.textContent = playersReady.player2 ? 'READY!' : 'NOT READY';
+                player2ReadyBtn.className = playersReady.player2 ? 'ready-button ready' : 'ready-button';
+            }
+            
+            if (readyStatus) {
+                if (playersReady.player1 && playersReady.player2) {
+                    readyStatus.textContent = 'Starting game...';
+                } else {
+                    readyStatus.textContent = 'Waiting for both players to be ready...';
+                }
+            }
+        }
+
+        function showReadyUI() {
+            let readyUI = document.getElementById('readyUI');
+            if (!readyUI) {
+                readyUI = document.createElement('div');
+                readyUI.id = 'readyUI';
+                readyUI.className = 'ready-ui';
+                readyUI.innerHTML = `
+                    <div class="ready-container">
+                        <h2>MULTIPLAYER READY</h2>
+                        <div class="ready-players">
+                            <div class="player-ready">
+                                <span>Player 1:</span>
+                                <div id="player1ReadyBtn" class="ready-button">NOT READY</div>
+                            </div>
+                            <div class="player-ready">
+                                <span>Player 2:</span>
+                                <div id="player2ReadyBtn" class="ready-button">NOT READY</div>
+                            </div>
+                        </div>
+                        <div class="my-ready-section">
+                            <button id="myReadyBtn" onclick="toggleReady()">PRESS TO READY</button>
+                        </div>
+                        <div id="readyStatus" class="ready-status">Waiting for both players to be ready...</div>
+                        <div class="game-info">First to ${WIN_SCORE} points wins!</div>
+                    </div>
+                `;
+                document.body.appendChild(readyUI);
+            }
+            readyUI.style.display = 'block';
+            updateReadyUI();
+        }
+
+        function hideReadyUI() {
+            const readyUI = document.getElementById('readyUI');
+            if (readyUI) {
+                readyUI.style.display = 'none';
+            }
+        }
+
+        function startActualGame() {
+            transitionToMultiplayer();
+        }
+
+        // Send input data to server for multiplayer
+        function sendInputData() {
+            if (connected && (gameState === "playing" || gameState === "waiting")) {
+                const inputData = {
+                    forward: keys["KeyW"] || false,
+                    back: keys["KeyS"] || false,
+                    left: keys["KeyA"] || false,
+                    right: keys["KeyD"] || false,
+                    brake: keys["Space"] || false
+                };
+                
+                sendMessage({
+                    type: 'input',
+                    input: inputData
+                });
+            }
+        }
 
         // ----- UI Functions -----
         function startSinglePlayer() {
@@ -694,9 +844,9 @@
         }
 
         // ----- Initialize Entities -----
-        // Control maps
+        // Control maps - Both players use WASD + Space on their own computers
         const player1Controls = { forward:"KeyW", back:"KeyS", left:"KeyA", right:"KeyD", brake:"Space" };
-        const player2Controls = { forward:"ArrowUp", back:"ArrowDown", left:"ArrowLeft", right:"ArrowRight", brake:"ShiftRight" };
+        const player2Controls = { forward:"KeyW", back:"KeyS", left:"KeyA", right:"KeyD", brake:"Space" };
 
         const player  = new Car(100, canvas.height / 2, "#c62828", player1Controls);
         const player2 = new Car(canvas.width - 100, canvas.height / 2, "#2962ff", player2Controls);
@@ -737,6 +887,8 @@
         }
 
         function detectGoal() {
+            if (gameOver) return; // Don't detect goals if game is over
+            
             const goalWidth = 120;
             const goalHeight = 20;
             
@@ -746,6 +898,12 @@
                 ball.y < canvas.height / 2 + goalWidth / 2) {
                 scoreP2++;
                 startCelebration('left');
+                
+                // Check for game over
+                if (scoreP2 >= WIN_SCORE) {
+                    endGame('Player 2');
+                }
+                
                 if (isHost) {
                     sendGameState();
                 }
@@ -757,10 +915,75 @@
                 ball.y < canvas.height / 2 + goalWidth / 2) {
                 scoreP1++;
                 startCelebration('right');
+                
+                // Check for game over
+                if (scoreP1 >= WIN_SCORE) {
+                    endGame('Player 1');
+                }
+                
                 if (isHost) {
                     sendGameState();
                 }
             }
+        }
+
+        function endGame(winnerName) {
+            gameOver = true;
+            winner = winnerName;
+            gameState = 'waiting'; // Return to waiting state for potential rematch
+            
+            // Show game over screen
+            showGameOverScreen(winnerName);
+            
+            // Reset ready states for potential rematch
+            playersReady = { player1: false, player2: false };
+            myReadyState = false;
+            
+            if (isHost) {
+                sendGameState();
+            }
+        }
+
+        function showGameOverScreen(winnerName) {
+            let gameOverUI = document.getElementById('gameOverUI');
+            if (!gameOverUI) {
+                gameOverUI = document.createElement('div');
+                gameOverUI.id = 'gameOverUI';
+                gameOverUI.className = 'game-over-ui';
+                document.body.appendChild(gameOverUI);
+            }
+            
+            gameOverUI.innerHTML = `
+                <div class="game-over-container">
+                    <h1>GAME OVER</h1>
+                    <h2>${winnerName} WINS!</h2>
+                    <div class="final-score">
+                        Final Score: ${scoreP1} - ${scoreP2}
+                    </div>
+                    <div class="rematch-section">
+                        <button onclick="startRematch()">PLAY AGAIN</button>
+                        <button onclick="returnToTitle()">RETURN TO MENU</button>
+                    </div>
+                </div>
+            `;
+            gameOverUI.style.display = 'block';
+        }
+
+        function hideGameOverScreen() {
+            const gameOverUI = document.getElementById('gameOverUI');
+            if (gameOverUI) {
+                gameOverUI.style.display = 'none';
+            }
+        }
+
+        function startRematch() {
+            hideGameOverScreen();
+            scoreP1 = 0;
+            scoreP2 = 0;
+            gameOver = false;
+            winner = null;
+            showReadyUI();
+            updateGameMode('Waiting for Ready...');
         }
 
         function detectGoalPractice() {
@@ -868,7 +1091,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawField();
 
-            if (gameState === "practice" || gameState === "multiplayer") {
+            if (gameState === "practice" || gameState === "playing") {
                 if (!celebrating) {
                     // Normal gameplay
                     if (singlePlayerMode || isHost) {
@@ -904,7 +1127,7 @@
                         });
                     }
                     
-                    if ((singlePlayerMode || isHost) && gameState === "multiplayer") {
+                    if ((singlePlayerMode || isHost) && gameState === "playing") {
                         detectGoal();
                     }
                     
@@ -951,19 +1174,25 @@
                             player2.heading = Math.PI;
                         }
                         
-                        if (isHost && gameState === "multiplayer") {
+                        if (isHost && gameState === "playing") {
                             sendGameState();
                         }
                     }
                 }
 
                 // Send game state periodically if host in multiplayer
-                if (isHost && !celebrating && gameState === "multiplayer") {
+                if (isHost && !celebrating && gameState === "playing") {
                     sendGameState();
                 }
+            } else if (gameState === "waiting") {
+                // In waiting state, just show the cars stationary
+                // Don't update physics, just draw everything
             }
 
             updateUI();
+            
+            // Send input data if connected
+            sendInputData();
             
             // Draw everything
             drawTyreMarks();
@@ -985,7 +1214,7 @@
         }
 
         function sendGameState() {
-            if (isHost && connected && gameState === "multiplayer") {
+            if (isHost && connected && (gameState === "playing" || gameState === "waiting")) {
                 sendMessage({
                     type: 'gameState',
                     state: {
@@ -994,7 +1223,10 @@
                         player2: { x: player2.x, y: player2.y, vx: player2.vx, vy: player2.vy, heading: player2.heading },
                         scoreP1: scoreP1,
                         scoreP2: scoreP2,
-                        celebrating: celebrating
+                        celebrating: celebrating,
+                        playersReady: playersReady,
+                        gameOver: gameOver,
+                        winner: winner
                     }
                 });
             }
@@ -1061,8 +1293,9 @@
             updateParticles(flames);
         }
 
+        // ----- Initialize Game -----
+        // Start WebSocket connection and game loop
         initWebSocket();
-
         gameLoop();
 
         function positionScoreboard() {

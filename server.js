@@ -101,6 +101,20 @@ wss.on('connection', (ws) => {
           }
           break;
           
+        case 'playerReady':
+          if (roomId && playerIndex !== -1) {
+            const room = rooms.get(roomId);
+            if (room) {
+              // Broadcast ready state to other players
+              broadcast(roomId, {
+                type: 'playerReady',
+                playerIndex: playerIndex,
+                ready: msg.ready
+              }, ws);
+            }
+          }
+          break;
+          
         case 'gameState':
           if (roomId && playerIndex === 0) { // Only host can update game state
             const room = rooms.get(roomId);
