@@ -418,7 +418,7 @@
         // ----- Initialize Entities -----
         // Control maps
         const player1Controls = { forward:"KeyW", back:"KeyS", left:"KeyA", right:"KeyD", brake:"Space" };
-        const player2Controls = { forward:"ArrowUp", back:"ArrowDown", left:"ArrowLeft", right:"ArrowRight", brake:"ShiftRight" };
+        const player2Controls = { forward:"KeyW", back:"KeyS", left:"KeyA", right:"KeyD", brake:"Space" };
 
         const player  = new Car(100, canvas.height / 2, "#c62828", player1Controls);
         const player2 = new Car(canvas.width - 100, canvas.height / 2, "#2962ff", player2Controls);
@@ -698,7 +698,7 @@
             setInterval(() => {
                 if (conn && conn.readyState === WebSocket.OPEN) {
                     const sendKeys = {};
-                    ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftRight'].forEach(k=>sendKeys[k]=!!keys[k]);
+                    ['KeyW','KeyS','KeyA','KeyD','Space'].forEach(k=>sendKeys[k]=!!keys[k]);
                     conn.send(JSON.stringify({type:'input', keys: sendKeys}));
                 }
             }, 50);
