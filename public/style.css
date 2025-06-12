@@ -1,0 +1,298 @@
+        /* ====== Global Styles ====== */
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Press Start 2P", monospace;
+            overflow: hidden;
+        }
+
+        canvas {
+            /* Scaled up crisp pixels */
+            image-rendering: pixelated;
+            background: #202020;
+            border: 4px solid #555;
+        }
+
+        /* Add subtle CRT scan-line effect */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background-image: repeating-linear-gradient(
+                to bottom,
+                rgba(0, 0, 0, 0) 0px,
+                rgba(0, 0, 0, 0) 2px,
+                rgba(0, 0, 0, 0.15) 4px
+            );
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ff00;
+            font-size: 12px;
+            text-shadow: 2px 2px 0px #000;
+            z-index: 10;
+        }
+
+        .title-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        .title-screen h1 {
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 4px 4px 0px #000, 8px 8px 0px #ff00ff;
+            margin: 0;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .title-screen .subtitle {
+            font-size: 16px;
+            color: #ffff00;
+            margin: 20px 0;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .title-screen .controls {
+            font-size: 12px;
+            color: #fff;
+            text-align: center;
+            margin: 20px 0;
+            line-height: 1.5;
+            text-shadow: 1px 1px 0px #000;
+        }
+
+        .title-screen .start-button {
+            font-size: 14px;
+            color: #000;
+            background: #00ff00;
+            padding: 10px 20px;
+            border: 3px solid #fff;
+            cursor: pointer;
+            animation: pulse 1.5s infinite;
+            text-shadow: none;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 4px 4px 0px #000, 8px 8px 0px #ff00ff; }
+            to { text-shadow: 4px 4px 0px #000, 8px 8px 0px #00ffff; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .retro-scoreboard {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000000;
+            border: 8px solid #d4c4a0;
+            border-image: 
+                repeating-linear-gradient(90deg, #d4c4a0 0, #d4c4a0 8px, #999 8px, #999 12px) 8;
+            font-family: "Press Start 2P", monospace;
+            color: #d4c4a0;
+            z-index: 11;
+            padding: 12px;
+            image-rendering: pixelated;
+            box-shadow: 
+                inset 0 0 0 4px #333,
+                0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .scoreboard-header {
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+            background: #333;
+            color: #d4c4a0;
+            padding: 4px 8px;
+            border: 2px solid #666;
+        }
+
+        .scoreboard-content {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0 8px 0;
+            gap: 40px;
+        }
+
+        .team-section {
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .team-label {
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #d4c4a0;
+            letter-spacing: 1px;
+        }
+
+        .team-score {
+            font-size: 48px;
+            color: #d4c4a0;
+            text-shadow: 2px 2px 0 #000;
+            line-height: 1;
+            font-weight: normal;
+        }
+
+        /* Remove old scoreboard styles */
+        .scoreboard {
+            display: none;
+        }
+
+        .add-player-button {
+            font-size: 14px;
+            color: #000;
+            background: #ffdd00;
+            padding: 8px 16px;
+            border: 3px solid #fff;
+            cursor: pointer;
+            margin-top: 20px;
+            text-shadow: none;
+        }
+
+        /* Multiplayer UI Styles */
+        .connection-status {
+            font-size: 12px;
+            color: #00ff00;
+            margin: 10px 0;
+            text-shadow: 1px 1px 0px #000;
+        }
+
+        .room-info {
+            font-size: 12px;
+            color: #ffff00;
+            margin: 10px 0;
+            text-shadow: 1px 1px 0px #000;
+        }
+
+        .player-count {
+            font-size: 12px;
+            color: #ff00ff;
+            margin: 10px 0;
+            text-shadow: 1px 1px 0px #000;
+        }
+
+        .share-button {
+            font-size: 12px;
+            color: #000;
+            background: #00ffff;
+            padding: 8px 16px;
+            border: 3px solid #fff;
+            cursor: pointer;
+            margin-top: 10px;
+            text-shadow: none;
+        }
+
+        .share-button:hover {
+            background: #00cccc;
+        }
+
+        .start-button:hover {
+            background: #00cc00;
+        }
+
+        .add-player-button:hover {
+            background: #ccaa00;
+        }
+
+        /* Single Player & Invite UI Styles */
+        .multiplayer-button {
+            font-size: 14px;
+            color: #000;
+            background: #ff6600;
+            padding: 10px 20px;
+            border: 3px solid #fff;
+            cursor: pointer;
+            margin-top: 10px;
+            animation: pulse 1.5s infinite;
+            text-shadow: none;
+        }
+
+        .multiplayer-button:hover {
+            background: #cc5500;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 15;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .invite-section {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .invite-button {
+            font-family: "Press Start 2P", monospace;
+            font-size: 12px;
+            color: #000;
+            background: #00ff00;
+            padding: 8px 16px;
+            border: 3px solid #fff;
+            cursor: pointer;
+            text-shadow: none;
+            animation: glow-green 2s ease-in-out infinite alternate;
+        }
+
+        .invite-button:hover {
+            background: #00cc00;
+        }
+
+        .game-mode {
+            font-family: "Press Start 2P", monospace;
+            font-size: 10px;
+            color: #ffff00;
+            text-shadow: 1px 1px 0px #000;
+            text-align: right;
+        }
+
+        @keyframes glow-green {
+            from { 
+                background: #00ff00;
+                box-shadow: 0 0 5px #00ff00;
+            }
+            to { 
+                background: #00cc00;
+                box-shadow: 0 0 15px #00ff00;
+            }
+        }
+
+        /* Hide game UI when title screen is visible */
+        .title-screen:not(.hidden) ~ .game-ui {
+            display: none !important;
+        }
