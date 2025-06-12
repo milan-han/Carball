@@ -58,14 +58,14 @@
         }
 
         const params = new URLSearchParams(location.search);
-        let hostId = params.get('game');
-        let isHost = !hostId;
+        let roomId = params.get('room');
+        let isHost = !roomId;
         let conn;
         let remoteInputs = {};
 
         function createShareLink() {
-            if (!hostId) return alert('Connection not ready');
-            const url = `${location.origin}${location.pathname}?game=${hostId}`;
+            if (!roomId) return alert('Connection not ready');
+            const url = `${location.origin}${location.pathname}?room=${roomId}`;
             window.prompt("Share this link with a friend to join:", url);
         }
 
@@ -77,7 +77,7 @@
                 if (isHost) {
                     conn.send(JSON.stringify({ type: 'create_room' }));
                 } else {
-                    conn.send(JSON.stringify({ type: 'join_room', roomId: hostId }));
+                    conn.send(JSON.stringify({ type: 'join_room', roomId }));
                 }
             });
 
@@ -86,7 +86,7 @@
                 try { data = JSON.parse(e.data); } catch { return; }
 
                 if (data.type === 'room_created') {
-                    hostId = data.roomId;
+                    roomId = data.roomId;
                 } else if (isHost) {
                     handleClientData(data);
                 } else {
@@ -624,7 +624,7 @@
             ball.draw();
 
             if (isHost && conn && conn.readyState === WebSocket.OPEN) {
-                conn.send({
+                conn.send(JSON.stringify({
                     type: 'state',
                     state: {
                         player1:{x:player.x,y:player.y,vx:player.vx,vy:player.vy,heading:player.heading},
@@ -632,7 +632,7 @@
                         ball:{x:ball.x,y:ball.y,vx:ball.vx,vy:ball.vy},
                         scoreP1, scoreP2, gameState, celebrating
                     }
-                });
+                }));
             }
 
             drawConfetti();
@@ -708,7 +708,7 @@
                 if (conn && conn.readyState === WebSocket.OPEN) {
                     const sendKeys = {};
                     ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftRight'].forEach(k=>sendKeys[k]=!!keys[k]);
-                    conn.send({type:'input', keys: sendKeys});
+                    conn.send(JSON.stringify({type:'input', keys: sendKeys}));
                 }
             }, 50);
         }
