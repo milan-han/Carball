@@ -17,3 +17,15 @@ Development mainly happens inside `script.js` and `style.css`.
 4. Refresh the browser to see your changes.
 
 Have fun!
+
+## GitHub Pages
+
+This game can be hosted for free using **GitHub Pages**. After pushing the
+repository to GitHub:
+
+1. Open the repository settings.
+2. Enable **GitHub Pages** using the `main` branch and the root folder.
+3. Navigate to `https://<username>.github.io/<repository>/` to play online.
+
+When hosted online you can invite a friend by clicking **ADD SECOND PLAYER** and
+sharing the generated link.
