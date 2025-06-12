@@ -13,7 +13,6 @@
 
         // ----- Game State -----
         let gameState = "title"; // "title", "playing"
-        let lapStartTime = Date.now();
 
         // Soccer game state
         let scoreP1 = 0;
@@ -38,14 +37,12 @@
         function startGame() {
             gameState = "playing";
             document.getElementById("titleScreen").classList.add("hidden");
-            document.getElementById("gameUI").classList.remove("hidden");
-            lapStartTime = Date.now();
+            // start gameplay
         }
 
         function returnToTitle() {
             gameState = "title";
             document.getElementById("titleScreen").classList.remove("hidden");
-            document.getElementById("gameUI").classList.add("hidden");
             // Reset car position
             player.x = 400;
             player.y = 500;
@@ -55,20 +52,15 @@
         }
 
         function updateUI() {
-            const speed = Math.hypot(player.vx, player.vy);
-            document.getElementById("speedometer").textContent = Math.round(speed * 15);
-            
-            const elapsed = (Date.now() - lapStartTime) / 1000;
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = (elapsed % 60).toFixed(1);
-            document.getElementById("lapTime").textContent = 
-                `${minutes.toString().padStart(2, "0")}:${seconds.padStart(4, "0")}`;
-            
-            document.getElementById("driftMeter").textContent = Math.round(player.driftAmount);
-            document.getElementById("hudP1").textContent = scoreP1;
-            document.getElementById("hudP2").textContent = scoreP2;
+            // update scoreboard only
             document.getElementById("topP1").textContent = scoreP1;
             document.getElementById("topP2").textContent = scoreP2;
+        }
+
+        function createShareLink() {
+            const id = Math.random().toString(36).substring(2, 8);
+            const url = `${location.origin}${location.pathname}?game=${id}`;
+            window.prompt("Share this link with a friend to join:", url);
         }
 
         // ----- Enhanced Car with Drifting -----
