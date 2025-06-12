@@ -608,13 +608,20 @@
                     }
                 }
             }
-            // ----- GUEST: no physics, just visual effects if desired -----
+            // ----- CLIENT-SIDE PREDICTION & EFFECTS for non-host -----
             if (!isHost) {
+                // Run local player's physics for responsiveness and drift visuals
+                players.forEach(car => {
+                    if (car.isLocal) car.update();
+                });
+                updateAllParticles();
                 updateConfetti();
             }
             updateUI();
             
             drawTyreMarks();
+            drawSmoke();
+            drawSparks();
             players.forEach(car=> {
                 if (car===player2 && !guestJoined && isHost) return; // hide car2 until joined
                 car.draw();
