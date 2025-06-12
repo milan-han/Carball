@@ -559,62 +559,53 @@
 
         // ----- Setup & Game Loop -----
         function gameLoop() {
-            // Clear and draw
+            // Clear and draw field
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawField();
 
-            if (isHost || !conn) {
+            if (isHost) {
+                // ----- HOST: authoritative simulation -----
                 ball.update();
+
+                if (!celebrating) {
+                    const hits = [];
+                    players.forEach(car => {
+                        car.update();
+                        if (handleCarBallCollision(car)) hits.push(car);
+                    });
+                    if (hits.length > 1) {
+                        hits.forEach(car => {
+                            const dx = car.x - ball.x;
+                            const dy = car.y - ball.y;
+                            const dist = Math.hypot(dx, dy) || 1;
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+                            car.vx += nx * 4;
+                            car.vy += ny * 4;
+                        });
+                    }
+                    handleCarCarCollisions();
+                    detectGoal();
+                    updateAllParticles();
+                } else {
+                    // Celebration physics on host
+                    celebrateTimer += 16;
+                    player.x += player.vx; player.y += player.vy;
+                    player.vx *= 0.95; player.vy *= 0.95;
+                    updateConfetti();
+                    updateAllParticles();
+
+                    if (celebrateTimer >= CELEBRATION_MS) {
+                        celebrating = false;
+                        resetBall();
+                        player.x = 100; player.y = canvas.height / 2; player.vx = player.vy = 0; player.heading = 0;
+                        player2.x = canvas.width - 100; player2.y = canvas.height / 2; player2.vx = player2.vy = 0; player2.heading = Math.PI;
+                    }
+                }
             }
-
-            if (!celebrating) {
-                // Normal gameplay for all cars
-                const hits = [];
-                players.forEach(car=>{
-                    car.update();
-                    if (handleCarBallCollision(car)) hits.push(car);
-                });
-                // If multiple cars hit in same frame, apply recoil to each
-                if (hits.length > 1) {
-                    hits.forEach(car=>{
-                        const dx = car.x - ball.x;
-                        const dy = car.y - ball.y;
-                        const dist = Math.hypot(dx, dy) || 1;
-                        const nx = dx / dist;
-                        const ny = dy / dist;
-                        car.vx += nx * 4;
-                        car.vy += ny * 4;
-                     });
-                }
-                handleCarCarCollisions();
-                detectGoal();
-                updateAllParticles();
-            } else {
-                // Celebration physics
-                celebrateTimer += 16; // approximate ms per frame
-                // Move exploding car (player 1)
-                player.x += player.vx;
-                player.y += player.vy;
-                player.vx *= 0.95;
-                player.vy *= 0.95;
-
+            // ----- GUEST: no physics, just visual effects if desired -----
+            if (!isHost) {
                 updateConfetti();
-                updateAllParticles();
-
-                if (celebrateTimer >= CELEBRATION_MS) {
-                    celebrating = false;
-                    resetBall();
-                    // Reset both cars to their side positions
-                    player.x = 100;
-                    player.y = canvas.height / 2;
-                    player.vx = player.vy = 0;
-                    player.heading = 0;
-
-                    player2.x = canvas.width - 100;
-                    player2.y = canvas.height / 2;
-                    player2.vx = player2.vy = 0;
-                    player2.heading = Math.PI;
-                }
             }
             updateUI();
             
