@@ -116,8 +116,8 @@
                 // Physics
                 this.vx = 0;
                 this.vy = 0;
-                this.acceleration = 0.15;
-                this.maxSpeed = 6;
+                this.acceleration = 0.08;
+                this.maxSpeed = 4;
                 this.friction = 0.03;
                 this.turnSpeed = 0.05;
                 
