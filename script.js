@@ -57,10 +57,53 @@
             document.getElementById("topP2").textContent = scoreP2;
         }
 
+        const params = new URLSearchParams(location.search);
+        const hostId = params.get('game');
+        let isHost = !hostId;
+        let peer, conn;
+        let remoteInputs = {};
+
         function createShareLink() {
-            const id = Math.random().toString(36).substring(2, 8);
-            const url = `${location.origin}${location.pathname}?game=${id}`;
+            if (!peer || !peer.id) return alert('Connection not ready');
+            const url = `${location.origin}${location.pathname}?game=${peer.id}`;
             window.prompt("Share this link with a friend to join:", url);
+        }
+
+        function initNetworking() {
+            peer = new Peer();
+
+            peer.on('open', (id) => {
+                if (!isHost) {
+                    conn = peer.connect(hostId);
+                    conn.on('data', handleHostData);
+                }
+            });
+
+            peer.on('connection', (c) => {
+                conn = c;
+                isHost = true;
+                conn.on('data', handleClientData);
+            });
+        }
+
+        function handleClientData(data) {
+            if (data.type === 'input') {
+                remoteInputs = data.keys || {};
+                for (const k in remoteInputs) keys[k] = remoteInputs[k];
+            }
+        }
+
+        function handleHostData(data) {
+            if (data.type === 'state') {
+                const s = data.state;
+                scoreP1 = s.scoreP1;
+                scoreP2 = s.scoreP2;
+                Object.assign(player, s.player1);
+                Object.assign(player2, s.player2);
+                Object.assign(ball, s.ball);
+                gameState = s.gameState;
+                celebrating = s.celebrating;
+            }
         }
 
         // ----- Enhanced Car with Drifting -----
@@ -510,8 +553,10 @@
             // Clear and draw
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawField();
-            
-            ball.update();
+
+            if (isHost || !conn) {
+                ball.update();
+            }
 
             if (!celebrating) {
                 // Normal gameplay for all cars
@@ -568,6 +613,19 @@
             players.forEach(car=>car.draw());
             drawFlames();
             ball.draw();
+
+            if (isHost && conn && conn.open) {
+                conn.send({
+                    type: 'state',
+                    state: {
+                        player1:{x:player.x,y:player.y,vx:player.vx,vy:player.vy,heading:player.heading},
+                        player2:{x:player2.x,y:player2.y,vx:player2.vx,vy:player2.vy,heading:player2.heading},
+                        ball:{x:ball.x,y:ball.y,vx:ball.vx,vy:ball.vy},
+                        scoreP1, scoreP2, gameState, celebrating
+                    }
+                });
+            }
+
             drawConfetti();
 
             requestAnimationFrame(gameLoop);
@@ -632,6 +690,18 @@
             updateParticles(tyreMarks);
             updateParticles(sparks);
             updateParticles(flames);
+        }
+
+        initNetworking();
+
+        if (!isHost) {
+            setInterval(() => {
+                if (conn && conn.open) {
+                    const sendKeys = {};
+                    ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftRight'].forEach(k=>sendKeys[k]=!!keys[k]);
+                    conn.send({type:'input', keys: sendKeys});
+                }
+            }, 50);
         }
 
         gameLoop();
