@@ -705,3 +705,24 @@
         }
 
         gameLoop();
+
+        function positionScoreboard() {
+            const canvasEl = document.getElementById("game");
+            const sb = document.getElementById("scoreBoard");
+            if (!canvasEl || !sb) return;
+            // Get canvas position relative to viewport
+            const rect = canvasEl.getBoundingClientRect();
+            // Place scoreboard centered horizontally (handled by CSS) and just above the canvas
+            const spacing = 10; // gap between scoreboard and canvas
+            sb.style.top = `${rect.top - sb.offsetHeight - spacing}px`;
+        }
+
+        window.addEventListener("load", positionScoreboard);
+        window.addEventListener("resize", positionScoreboard);
+
+        // After scores update (in case layout changes), reposition
+        const originalUpdateUI = updateUI;
+        updateUI = function () {
+            originalUpdateUI();
+            positionScoreboard();
+        };

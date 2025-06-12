@@ -107,7 +107,7 @@
 
         .retro-scoreboard {
             position: absolute;
-            top: -80px;
+            top: 0;
             left: 50%;
             transform: translateX(-50%);
             background: #000000;
