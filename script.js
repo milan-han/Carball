@@ -24,14 +24,15 @@
         const CELEBRATION_MS = 1500;
 
         // ----- Input Handling -----
-        const keys = {};
+        const localKeys = {};
+        const remoteKeys = {};
         window.addEventListener("keydown", (e) => {
-            keys[e.code] = true;
+            localKeys[e.code] = true;
             if (e.code === "Escape" && gameState === "playing") {
                 returnToTitle();
             }
         });
-        window.addEventListener("keyup", (e) => (keys[e.code] = false));
+        window.addEventListener("keyup", (e) => (localKeys[e.code] = false));
 
         // ----- UI Functions -----
         function startGame() {
@@ -62,6 +63,7 @@
         let isHost = !roomId;
         let conn;
         let remoteInputs = {};
+        let guestJoined = false;
 
         function createShareLink() {
             if (!roomId) return alert('Connection not ready');
@@ -92,13 +94,15 @@
                 } else {
                     handleHostData(data);
                 }
+
+                if (data.type === 'guest_joined') guestJoined = true;
             });
         }
 
         function handleClientData(data) {
             if (data.type === 'input') {
                 remoteInputs = data.keys || {};
-                for (const k in remoteInputs) keys[k] = remoteInputs[k];
+                Object.assign(remoteKeys, remoteInputs);
             }
         }
 
@@ -117,10 +121,11 @@
 
         // ----- Enhanced Car with Drifting -----
         class Car {
-            constructor(x, y, color, controls) {
+            constructor(x, y, color, controls, isLocal) {
                 this.x = x;
                 this.y = y;
                 this.heading = -Math.PI / 2;
+                this.isLocal = !!isLocal;
 
                 // Physics
                 this.vx = 0;
@@ -145,9 +150,9 @@
             update() {
                 if (gameState !== "playing") return;
 
-                // Capture previous handbrake state then update current
+                const keyPressed = code => (this.isLocal ? localKeys[code] : remoteKeys[code]);
                 const prevHandbrake = this.handbrake;
-                this.handbrake = keys[this.controls.brake];
+                this.handbrake = keyPressed(this.controls.brake);
 
                 // === Convert world velocity to car-local coordinates ===
                 const cos = Math.cos(this.heading);
@@ -156,13 +161,13 @@
                 let lateral = -this.vx * sin + this.vy * cos;     // sideways velocity (drift component)
 
                 // === Throttle & Brake ===
-                if (keys[this.controls.forward]) forward += this.acceleration;
-                if (keys[this.controls.back])    forward -= this.acceleration * 0.8;
+                if (keyPressed(this.controls.forward)) forward += this.acceleration;
+                if (keyPressed(this.controls.back))    forward -= this.acceleration * 0.8;
 
                 // === Steering ===
                 let steerInput = 0;
-                if (keys[this.controls.left])  steerInput = -1;
-                else if (keys[this.controls.right]) steerInput = 1;
+                if (keyPressed(this.controls.left))  steerInput = -1;
+                else if (keyPressed(this.controls.right)) steerInput = 1;
 
                 // Turn rate grows with speed for tighter feel
                 let turnRate = steerInput * this.turnSpeed * (Math.abs(forward) / 2 + 0.3);
@@ -420,8 +425,8 @@
         const player1Controls = { forward:"KeyW", back:"KeyS", left:"KeyA", right:"KeyD", brake:"Space" };
         const player2Controls = { forward:"KeyW", back:"KeyS", left:"KeyA", right:"KeyD", brake:"Space" };
 
-        const player  = new Car(100, canvas.height / 2, "#c62828", player1Controls);
-        const player2 = new Car(canvas.width - 100, canvas.height / 2, "#2962ff", player2Controls);
+        const player  = new Car(100, canvas.height / 2, "#c62828", player1Controls, isHost);
+        const player2 = new Car(canvas.width - 100, canvas.height / 2, "#2962ff", player2Controls, !isHost);
 
         const players = [player, player2];
 
@@ -610,7 +615,10 @@
             updateUI();
             
             drawTyreMarks();
-            players.forEach(car=>car.draw());
+            players.forEach(car=> {
+                if (car===player2 && !guestJoined && isHost) return; // hide car2 until joined
+                car.draw();
+            });
             drawFlames();
             ball.draw();
 
@@ -698,7 +706,7 @@
             setInterval(() => {
                 if (conn && conn.readyState === WebSocket.OPEN) {
                     const sendKeys = {};
-                    ['KeyW','KeyS','KeyA','KeyD','Space'].forEach(k=>sendKeys[k]=!!keys[k]);
+                    ['KeyW','KeyS','KeyA','KeyD','Space'].forEach(k=>sendKeys[k]=!!localKeys[k]);
                     conn.send(JSON.stringify({type:'input', keys: sendKeys}));
                 }
             }, 50);
