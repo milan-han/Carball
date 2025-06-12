@@ -283,7 +283,46 @@
             ctx.fillStyle = "#2d5a2d"; // grass
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Field lines
+            // Goal dimensions
+            const goalH = 120;
+            const goalDepth = 20;
+            const goalTop = (canvas.height - goalH) / 2;
+            const goalBottom = goalTop + goalH;
+            const postWidth = 4;
+
+            // === LEFT GOAL (Player 2 scores here) - OUTSIDE the field ===
+            // Goal area background
+            ctx.fillStyle = "rgba(198,40,40,0.3)";
+            ctx.fillRect(0, goalTop, 20, goalH);
+            
+            // Goal posts (outside the boundary)
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, goalTop - postWidth, postWidth, postWidth); // top back post
+            ctx.fillRect(0, goalBottom, postWidth, postWidth); // bottom back post
+            ctx.fillRect(20 - postWidth, goalTop - postWidth, postWidth, postWidth); // top front post
+            ctx.fillRect(20 - postWidth, goalBottom, postWidth, postWidth); // bottom front post
+            
+            // Goal crossbars
+            ctx.fillRect(0, goalTop - postWidth, 20, postWidth); // top crossbar
+            ctx.fillRect(0, goalBottom, 20, postWidth); // bottom crossbar
+
+            // === RIGHT GOAL (Player 1 scores here) - OUTSIDE the field ===
+            // Goal area background
+            ctx.fillStyle = "rgba(41,98,255,0.3)";
+            ctx.fillRect(canvas.width - 20, goalTop, 20, goalH);
+            
+            // Goal posts (outside the boundary)
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(canvas.width - postWidth, goalTop - postWidth, postWidth, postWidth); // top back post
+            ctx.fillRect(canvas.width - postWidth, goalBottom, postWidth, postWidth); // bottom back post
+            ctx.fillRect(canvas.width - 20, goalTop - postWidth, postWidth, postWidth); // top front post
+            ctx.fillRect(canvas.width - 20, goalBottom, postWidth, postWidth); // bottom front post
+            
+            // Goal crossbars
+            ctx.fillRect(canvas.width - 20, goalTop - postWidth, 20, postWidth); // top crossbar
+            ctx.fillRect(canvas.width - 20, goalBottom, 20, postWidth); // bottom crossbar
+
+            // Field lines (drawn after goals so they appear on top)
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = 4;
             ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40); // outer lines
@@ -299,14 +338,29 @@
             ctx.arc(canvas.width / 2, canvas.height / 2, 60, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Goals
-            const goalH = 120;
-            // left goal tinted red
-            ctx.fillStyle = "rgba(198,40,40,0.4)";
-            ctx.fillRect(20, (canvas.height - goalH) / 2, 10, goalH);
-            // right goal tinted blue
-            ctx.fillStyle = "rgba(41,98,255,0.4)";
-            ctx.fillRect(canvas.width - 30, (canvas.height - goalH) / 2, 10, goalH);
+            // === PENALTY AREAS (18-yard box) ===
+            const penaltyWidth = 80;
+            const penaltyHeight = 200;
+            const penaltyTop = (canvas.height - penaltyHeight) / 2;
+            
+            // Left penalty area
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(20, penaltyTop, penaltyWidth, penaltyHeight);
+            
+            // Right penalty area  
+            ctx.strokeRect(canvas.width - 20 - penaltyWidth, penaltyTop, penaltyWidth, penaltyHeight);
+            
+            // === GOAL AREAS (6-yard box) - Same width as goal ===
+            const goalAreaWidth = 30;
+            const goalAreaHeight = goalH; // Match the goal height exactly
+            const goalAreaTop = goalTop; // Align with goal position
+            
+            // Left goal area
+            ctx.strokeRect(20, goalAreaTop, goalAreaWidth, goalAreaHeight);
+            
+            // Right goal area
+            ctx.strokeRect(canvas.width - 20 - goalAreaWidth, goalAreaTop, goalAreaWidth, goalAreaHeight);
         }
 
         // ----- Initialize Entities -----
@@ -363,12 +417,12 @@
 
             if (celebrating) return; // ignore during celebration
 
-            // Left goal scored
-            if (ball.x - ball.r <= 20 && ball.y >= goalTop && ball.y <= goalBottom) {
+            // Left goal scored (ball enters the goal area outside the field)
+            if (ball.x <= 20 && ball.y >= goalTop && ball.y <= goalBottom) {
                 startCelebration("left");
             }
-            // Right goal scored
-            if (ball.x + ball.r >= canvas.width - 20 && ball.y >= goalTop && ball.y <= goalBottom) {
+            // Right goal scored (ball enters the goal area outside the field)
+            if (ball.x >= canvas.width - 20 && ball.y >= goalTop && ball.y <= goalBottom) {
                 startCelebration("right");
             }
         }

@@ -105,21 +105,66 @@
             display: none !important;
         }
 
-        .scoreboard {
+        .retro-scoreboard {
             position: absolute;
-            top: 15px;
+            top: -80px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 8px 24px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 4px solid #fff;
-            border-radius: 8px;
-            font-family: "Bubblegum Sans", cursive;
-            color: #ffffff;
-            font-size: 36px;
-            -webkit-text-stroke: 2px #000000;
-            text-shadow: 2px 2px 0 #000;
+            background: #000000;
+            border: 8px solid #d4c4a0;
+            border-image: 
+                repeating-linear-gradient(90deg, #d4c4a0 0, #d4c4a0 8px, #999 8px, #999 12px) 8;
+            font-family: "Press Start 2P", monospace;
+            color: #d4c4a0;
             z-index: 11;
+            padding: 12px;
+            image-rendering: pixelated;
+            box-shadow: 
+                inset 0 0 0 4px #333,
+                0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .scoreboard-header {
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+            background: #333;
+            color: #d4c4a0;
+            padding: 4px 8px;
+            border: 2px solid #666;
+        }
+
+        .scoreboard-content {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0 8px 0;
+            gap: 40px;
+        }
+
+        .team-section {
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .team-label {
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #d4c4a0;
+            letter-spacing: 1px;
+        }
+
+        .team-score {
+            font-size: 48px;
+            color: #d4c4a0;
+            text-shadow: 2px 2px 0 #000;
+            line-height: 1;
+            font-weight: normal;
+        }
+
+        /* Remove old scoreboard styles */
+        .scoreboard {
+            display: none;
         }
 
         .add-player-button {

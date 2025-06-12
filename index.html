@@ -24,10 +24,21 @@
 
     <!-- analytics overlay removed -->
 
-    <div id="scoreBoard" class="scoreboard"><span id="topP1">0</span> : <span id="topP2">0</span></div>
+    <div id="scoreBoard" class="retro-scoreboard">
+        <div class="scoreboard-header">SCOREBOARD</div>
+        <div class="scoreboard-content">
+            <div class="team-section">
+                <div class="team-label">HOME</div>
+                <div class="team-score" id="topP1">0</div>
+            </div>
+            <div class="team-section">
+                <div class="team-label">GUEST</div>
+                <div class="team-score" id="topP2">0</div>
+            </div>
+        </div>
+    </div>
 
     <canvas id="game" width="800" height="600"></canvas>
 
     <script src="script.js"></script>
 </body></html> 
- 
