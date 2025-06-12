@@ -58,31 +58,40 @@
         }
 
         const params = new URLSearchParams(location.search);
-        const hostId = params.get('game');
+        let hostId = params.get('game');
         let isHost = !hostId;
-        let peer, conn;
+        let conn;
         let remoteInputs = {};
 
         function createShareLink() {
-            if (!peer || !peer.id) return alert('Connection not ready');
-            const url = `${location.origin}${location.pathname}?game=${peer.id}`;
+            if (!hostId) return alert('Connection not ready');
+            const url = `${location.origin}${location.pathname}?game=${hostId}`;
             window.prompt("Share this link with a friend to join:", url);
         }
 
         function initNetworking() {
-            peer = new Peer();
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            conn = new WebSocket(`${proto}://${location.host}/ws`);
 
-            peer.on('open', (id) => {
-                if (!isHost) {
-                    conn = peer.connect(hostId);
-                    conn.on('data', handleHostData);
+            conn.addEventListener('open', () => {
+                if (isHost) {
+                    conn.send(JSON.stringify({ type: 'create_room' }));
+                } else {
+                    conn.send(JSON.stringify({ type: 'join_room', roomId: hostId }));
                 }
             });
 
-            peer.on('connection', (c) => {
-                conn = c;
-                isHost = true;
-                conn.on('data', handleClientData);
+            conn.addEventListener('message', (e) => {
+                let data;
+                try { data = JSON.parse(e.data); } catch { return; }
+
+                if (data.type === 'room_created') {
+                    hostId = data.roomId;
+                } else if (isHost) {
+                    handleClientData(data);
+                } else {
+                    handleHostData(data);
+                }
             });
         }
 
@@ -614,7 +623,7 @@
             drawFlames();
             ball.draw();
 
-            if (isHost && conn && conn.open) {
+            if (isHost && conn && conn.readyState === WebSocket.OPEN) {
                 conn.send({
                     type: 'state',
                     state: {
@@ -696,7 +705,7 @@
 
         if (!isHost) {
             setInterval(() => {
-                if (conn && conn.open) {
+                if (conn && conn.readyState === WebSocket.OPEN) {
                     const sendKeys = {};
                     ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftRight'].forEach(k=>sendKeys[k]=!!keys[k]);
                     conn.send({type:'input', keys: sendKeys});

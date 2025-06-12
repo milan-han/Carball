@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Car Ball - Multiplayer</title>
+    <title>Car Ball</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Bubblegum+Sans&display=swap" rel="stylesheet">
@@ -18,30 +18,21 @@
             SPACE - HANDBRAKE (DRIFT)<br>
             ESC - RETURN TO MENU
         </div>
-        <div class="connection-status" id="connectionStatus">Connecting...</div>
-        <div class="room-info" id="roomInfo">Room: <span id="roomId"></span></div>
-        <div class="player-count" id="playerCount">Players: <span id="playerCountValue">0</span>/2</div>
-        <div class="start-button" onclick="startSinglePlayer()">START PRACTICE</div>
-        <div class="multiplayer-button" id="multiplayerButton" onclick="startMultiplayer()" style="display: none;">START MULTIPLAYER</div>
+        <div class="start-button" onclick="startGame()">PRESS TO RACE</div>
+        <div class="add-player-button" onclick="createShareLink()">ADD SECOND PLAYER</div>
     </div>
 
-    <!-- In-game UI overlay -->
-    <div id="gameUI" class="game-ui" style="display: none;">
-        <div class="invite-section">
-            <div class="invite-button" onclick="invitePlayer()">INVITE PLAYER</div>
-            <div class="game-mode" id="gameMode">Practice Mode</div>
-        </div>
-    </div>
+    <!-- analytics overlay removed -->
 
     <div id="scoreBoard" class="retro-scoreboard">
         <div class="scoreboard-header">SCOREBOARD</div>
         <div class="scoreboard-content">
             <div class="team-section">
-                <div class="team-label">PLAYER 1</div>
+                <div class="team-label">HOME</div>
                 <div class="team-score" id="topP1">0</div>
             </div>
             <div class="team-section">
-                <div class="team-label">PLAYER 2</div>
+                <div class="team-label">GUEST</div>
                 <div class="team-score" id="topP2">0</div>
             </div>
         </div>
@@ -49,7 +40,6 @@
 
     <canvas id="game" width="800" height="600"></canvas>
 
-    <script src="script.js"></script>
-</body>
-</html>
+    <script src="/script.js"></script>
+</body></html>
  
