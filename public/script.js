@@ -105,8 +105,9 @@
                 case 'playerJoined':
                     updatePlayerCount(msg.totalPlayers);
                     if (msg.totalPlayers === 2) {
-                        if (singlePlayerMode && waitingForPlayer) {
-                            // Transition from single player to multiplayer
+                        onPlayerJoined({ playerId: `Player ${msg.totalPlayers}`, isHost: isHost });
+                        if (gameState === 'practice') {
+                            // Transition from practice to multiplayer
                             transitionToMultiplayer();
                         } else if (isHost) {
                             document.getElementById('multiplayerButton').style.display = 'block';
@@ -116,6 +117,7 @@
                     
                 case 'playerLeft':
                     updatePlayerCount(msg.totalPlayers);
+                    onPlayerLeft({ playerId: 'Player 2' });
                     document.getElementById('multiplayerButton').style.display = 'none';
                     if (gameState === 'multiplayer') {
                         // Return to practice mode if other player leaves
@@ -178,27 +180,63 @@
         }
 
         function invitePlayer() {
-            if (!roomId) {
-                // Create room for multiplayer
-                joinRoom();
-                waitingForPlayer = true;
-                updateGameMode('Waiting for Player...');
+            if (gameState === 'practice') {
+                // Generate shareable link with current room ID
+                const inviteUrl = `${window.location.origin}?room=${roomId}`;
+                
+                // Copy to clipboard
+                navigator.clipboard.writeText(inviteUrl).then(() => {
+                    // Show temporary notification
+                    showNotification('Invite link copied to clipboard!');
+                }).catch(() => {
+                    // Fallback: show the link in a prompt
+                    prompt('Share this link with your friend:', inviteUrl);
+                });
+            }
+        }
+
+        function showNotification(message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #00ff00;
+                color: #000;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-family: 'Courier New', monospace;
+                font-weight: bold;
+                z-index: 1000;
+                animation: fadeInOut 3s ease-in-out;
+            `;
+            
+            // Add CSS animation
+            if (!document.querySelector('#notification-style')) {
+                const style = document.createElement('style');
+                style.id = 'notification-style';
+                style.textContent = `
+                    @keyframes fadeInOut {
+                        0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                        20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                        80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                        100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                    }
+                `;
+                document.head.appendChild(style);
             }
             
-            const url = `${location.origin}${location.pathname}?room=${roomId}`;
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Join my Car Ball game!',
-                    text: 'Come play Car Ball with me!',
-                    url: url
-                });
-            } else {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert('Invite link copied to clipboard!\nShare it with a friend to play together.');
-                }).catch(() => {
-                    prompt('Share this link with a friend:', url);
-                });
-            }
+            document.body.appendChild(notification);
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
         }
 
         function updateGameMode(mode) {
@@ -677,28 +715,24 @@
         function startCelebration(goalSide) {
             celebrating = true;
             celebrateTimer = 0;
-            if(goalSide === "left") scoreP2 += 1; else scoreP1 += 1;
-            updateUI();
-
-            // push all cars away from goal direction
-            players.forEach(car=>{
-               car.vx = goalSide === "left" ? 1 : -1 * 10;
-               car.vy = (Math.random()*2-1)*6;
-            });
-
-            // Confetti particles
-            confetti = [];
-            const originX = ball.x;
-            const originY = ball.y;
-            for (let i = 0; i < 150; i++) {
+            
+            // Create confetti
+            for (let i = 0; i < 50; i++) {
                 confetti.push({
-                    x: originX,
-                    y: originY,
-                    vx: (Math.random() - 0.5) * 8,
-                    vy: (Math.random() - 0.5) * 8 - 3,
-                    color: `hsl(${Math.random()*360}, 80%, 60%)`,
-                    life: Math.random() * 60 + 40
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    color: `hsl(${Math.random() * 360}, 70%, 60%)`,
+                    life: 100
                 });
+            }
+
+            // Explosion effect on scoring car
+            const scoringCar = goalSide === 'left' ? player2 : player;
+            if (scoringCar) {
+                scoringCar.vx += (Math.random() - 0.5) * 8;
+                scoringCar.vy += (Math.random() - 0.5) * 8;
             }
         }
 
@@ -733,15 +767,20 @@
             const goalWidth = 120;
             const goalHeight = 20;
             
-            // Check if ball entered either goal in practice mode
-            if ((ball.x - ball.radius < goalHeight || ball.x + ball.radius > canvas.width - goalHeight) && 
+            // Left goal (Player scores)
+            if (ball.x - ball.radius < goalHeight && 
                 ball.y > canvas.height / 2 - goalWidth / 2 && 
                 ball.y < canvas.height / 2 + goalWidth / 2) {
-                
-                // Just reset ball position for practice
-                setTimeout(() => {
-                    resetBall();
-                }, 500);
+                scoreP1++;
+                startCelebration('left');
+            }
+            
+            // Right goal (Player scores)
+            if (ball.x + ball.radius > canvas.width - goalHeight && 
+                ball.y > canvas.height / 2 - goalWidth / 2 && 
+                ball.y < canvas.height / 2 + goalWidth / 2) {
+                scoreP1++;
+                startCelebration('right');
             }
         }
 
@@ -1052,3 +1091,55 @@
             originalUpdateUI();
             positionScoreboard();
         };
+
+        function onPlayerJoined(data) {
+            console.log('Player joined:', data);
+            
+            if (gameState === 'practice') {
+                // Show join notification
+                showNotification(`${data.playerId} joined the game!`);
+                
+                // Switch to multiplayer mode
+                gameState = 'multiplayer';
+                isHost = data.isHost;
+                
+                // Initialize second player
+                if (!player2) {
+                    player2 = {
+                        x: canvas.width - 100,
+                        y: canvas.height / 2,
+                        vx: 0,
+                        vy: 0,
+                        angle: Math.PI,
+                        speed: 0,
+                        maxSpeed: 8,
+                        acceleration: 0.5,
+                        friction: 0.95,
+                        turnSpeed: 0.08,
+                        drifting: false,
+                        driftAngle: 0,
+                        color: '#ff4444'
+                    };
+                }
+                
+                updateGameMode('Multiplayer');
+                updateUI();
+            }
+        }
+
+        function onPlayerLeft(data) {
+            console.log('Player left:', data);
+            
+            if (gameState === 'multiplayer') {
+                // Show leave notification
+                showNotification(`${data.playerId} left the game`);
+                
+                // Switch back to practice mode
+                gameState = 'practice';
+                isHost = true;
+                player2 = null;
+                
+                updateGameMode('Practice Mode');
+                updateUI();
+            }
+        }
